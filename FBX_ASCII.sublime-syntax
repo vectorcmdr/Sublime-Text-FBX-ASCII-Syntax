@@ -1,0 +1,133 @@
+%YAML 1.2
+---
+# Sublime Text syntax highlighting for Autodesk FBX ASCII format.
+# File extension: .fbx (ASCII format)
+# By: vector_cmdr (https://github.com/vectorcmdr)
+
+name: FBX ASCII
+file_extensions:
+  - fbx
+scope: source.fbx.ascii
+
+variables:
+  # Whitespace and basic tokens
+  ws: '[ \t]+'
+  identifier: '[A-Za-z_][A-Za-z0-9_]*'
+  # FBX node/property names often include ':' (e.g., "Model::Cube")
+  # and may include other punctuation in practice, but ':' is very common.
+  identifier_colon: '[A-Za-z_][A-Za-z0-9_]*(?:::[^ \t\r\n{",]+)?'
+
+  # Numbers: 1, -1, 1.0, -1.0, 1e-3, -1.2E+6
+  number: '[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?'
+
+contexts:
+  main:
+    - include: comments
+    - include: header_keywords
+    - include: object_block
+    - include: property_line
+    - include: literals
+    - include: punctuation
+
+  # FBX comment style is typically ';' to end of line in ASCII exports
+  comments:
+    - match: ';.*$'
+      scope: comment.line.semicolon.fbx
+
+  # Common header-ish tokens seen near top of file (not exhaustive)
+  header_keywords:
+    - match: '\b(Kaydara\s+FBX\s+Binary|Kaydara\s+FBX)\b'
+      scope: keyword.other.header.fbx
+    - match: '\bFBXHeaderExtension\b'
+      scope: entity.name.section.fbx
+    - match: '\bFBXVersion\b'
+      scope: keyword.other.version.fbx
+
+  # Top-level and nested object blocks:  NodeName: <props> {
+  # Examples:
+  #   Objects:  {
+  #   Model: 1234, "Model::Cube", "Mesh" {
+  object_block:
+    - match: '^(?:(?<=\A)|(?<=\n))\s*(?:{{identifier}}|{{identifier_colon}})(?=\s*:)'
+      scope: entity.name.section.fbx
+    - match: ':'
+      scope: punctuation.separator.key-value.fbx
+      push:
+        - meta_scope: meta.fbx.node
+        - include: comments
+        - include: literals
+        - include: punctuation
+        - include: typed_property_hints
+        - include: commas
+        - match: '\{'
+          scope: punctuation.section.block.begin.fbx
+          pop: true
+        - match: '$'
+          pop: true
+
+  # Property-like lines inside blocks frequently look like:
+  #   P: "Lcl Translation", "Lcl Translation", "", "A",0,0,0
+  #   C: "OO",123,456
+  property_line:
+    - match: '^\s*(P|C|A|T|U|S|D|R|K)\b(?=\s*:)'
+      scope: keyword.other.record.fbx
+    - match: ':'
+      scope: punctuation.separator.key-value.fbx
+
+  typed_property_hints:
+    # FBX uses type-ish string tags in many places (examples: "Model", "Mesh", "Geometry", "Deformer")
+    # and also property system hints like "A", "KString", "Number", etc.
+    - match: '(?<=,)\s*"([A-Za-z][A-Za-z0-9_]*)"\s*(?=,|\s*\{|$)'
+      scope: constant.other.typehint.fbx
+
+  literals:
+    - include: strings
+    - include: numbers
+    - include: booleans
+    - include: nulls
+
+  strings:
+    # Double-quoted strings are common, including escaped quotes.
+    - match: '"'
+      scope: punctuation.definition.string.begin.fbx
+      push:
+        - meta_scope: string.quoted.double.fbx
+        - match: '\\.'
+          scope: constant.character.escape.fbx
+        - match: '"'
+          scope: punctuation.definition.string.end.fbx
+          pop: true
+
+  numbers:
+    - match: '\b{{number}}\b'
+      scope: constant.numeric.fbx
+
+  booleans:
+    # FBX ASCII often encodes booleans as 0/1, but some exporters may use TRUE/FALSE.
+    - match: '\b(TRUE|FALSE|True|False)\b'
+      scope: constant.language.boolean.fbx
+
+  nulls:
+    - match: '\bNULL\b'
+      scope: constant.language.null.fbx
+
+  commas:
+    - match: ','
+      scope: punctuation.separator.sequence.fbx
+
+  punctuation:
+    - match: '\{'
+      scope: punctuation.section.block.begin.fbx
+    - match: '\}'
+      scope: punctuation.section.block.end.fbx
+    - match: '\['
+      scope: punctuation.section.brackets.begin.fbx
+    - match: '\]'
+      scope: punctuation.section.brackets.end.fbx
+    - match: '\('
+      scope: punctuation.section.parens.begin.fbx
+    - match: '\)'
+      scope: punctuation.section.parens.end.fbx
+    - match: '\.'
+      scope: punctuation.accessor.dot.fbx
+...
